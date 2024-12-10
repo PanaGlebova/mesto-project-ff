@@ -2,4 +2,5 @@
 
 https://github.com/PanaGlebova/mesto-project-ff
 
-https://github.com/PanaGlebova/mesto-project-ff.git
+https://panaglebova.github.io/mesto-project-ff/
+
