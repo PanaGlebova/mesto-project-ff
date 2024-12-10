@@ -1,0 +1,178 @@
+import { getUserInfo, getCards, editUserProfile, addNewCard, updateUserAvatar } from './scripts/api';
+import { createPlaceCard, handleDeletePlaceCard, handleToggleFavoriteCard } from './scripts/card';
+import { handleCloseModal, handleOpenModal, handleCloseModalByOverlay } from './scripts/modal';
+import { enableValidation, clearValidation, validationConfig } from './scripts/validation';
+// styles
+import './styles/index.css';
+
+const placesList = document.querySelector('.places__list');
+let userId = null;
+
+const popapProfileEdit = document.querySelector('.popup_type_edit');
+const popapCardCreate = document.querySelector('.popup_type_new-card');
+const popapImageCard = document.querySelector('.popup_type_image');
+const popapAvatarEdit = document.querySelector('.popup_type_avatar_edit');
+const popaps = document.querySelectorAll('.popup');
+
+
+const imagePopap = document.querySelector('.popup__image');
+const imagePopapCaption = document.querySelector('.popup__caption');
+
+const profileEditPopapOpenButton = document.querySelector('.profile__edit-button');
+const createCardPopapOpenButton = document.querySelector('.profile__add-button');
+const editAvatarPopapOpenButton = document.querySelector('.profile__edit-avatar-button');
+
+const formCreateCard = document.forms['new-place'];
+const formEditUserProfile = document.forms['edit-profile'];
+const formEditAvatar = document.forms['edit-avatar'];
+
+const profileName = document.querySelector('.profile__title');
+const profileDescription = document.querySelector('.profile__description');
+const profileImage = document.querySelector('.profile__image');
+
+const profileNameInput = formEditUserProfile.elements.name;
+const profileDescriptionInput = formEditUserProfile.elements.description;
+const profileAvatarLinkInput = formEditAvatar.elements['avatar-link'];
+
+const cardPlaceNameInput = formCreateCard.elements['place-name'];
+const cardPlaceLinkInput = formCreateCard.elements.link;
+
+const handleFillDataImagePopap = (event) => {
+  const targetImage = event.target;
+  const imageSrc = targetImage.src;
+  const imageCaption = targetImage.alt;
+
+  imagePopap.src = imageSrc;
+  imagePopap.alt = imageCaption;
+  imagePopapCaption.textContent = imageCaption;
+
+  handleOpenModal(popapImageCard);
+}
+
+const handleCreateCardPlaceFormSubmit = (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('.button');
+
+  const cardData = {
+    name: cardPlaceNameInput.value,
+    link: cardPlaceLinkInput.value
+  }
+
+  button.textContent= 'Cохранение....'
+
+  addNewCard(cardData)
+    .then((newCardData) => {
+      const card = createPlaceCard(newCardData, userId, handleDeletePlaceCard, handleToggleFavoriteCard, handleFillDataImagePopap);
+      placesList.prepend(card)
+      formCreateCard.reset();
+      handleCloseModal(popapCardCreate)
+    })
+    .catch((error) => console.error(error))
+    .finally(() => button.textContent = 'Cохранить');
+}
+
+const handleUserProfileFormSubmit = (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('.button');
+
+  const userData =  {
+    name: profileNameInput.value,
+    about: profileDescriptionInput.value
+  }
+
+  button.textContent= 'Cохранение....'
+
+  editUserProfile(userData)
+    .then((data) => {
+      profileName.textContent = data.name;
+      profileDescription.textContent = data.about;
+      handleCloseModal(popapProfileEdit)
+    })
+    .catch((error) => console.error(error))
+    .finally(() => button.textContent = 'Cохранить');
+
+}
+
+const handleEditAvatarFormSubmit = (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('.button');
+
+  button.textContent= 'Cохранение....'
+
+  const avatarLink = profileAvatarLinkInput.value;
+  updateUserAvatar(avatarLink)
+  .then((data) => {
+    profileImage.style.backgroundImage = `url(${data.avatar})`;
+    form.reset();
+    handleCloseModal(popapAvatarEdit)
+  })
+  .catch((error) => console.error(error))
+  .finally(() => button.textContent = 'Cохранить');
+}
+
+const fillUserProfileFormFields = () => {
+  profileNameInput.value = profileName.textContent;
+  profileDescriptionInput.value = profileDescription.textContent;
+}
+
+Promise.all([getUserInfo(), getCards()]).then((values) => {
+  const userData = values[0];
+  const cardsData = values[1];
+
+  userId = userData._id;
+
+  profileName.textContent = userData.name;
+  profileDescription.textContent = userData.about;
+  profileImage.style.backgroundImage = `url(${userData.avatar})`;
+
+  renderPlaceCards(cardsData, userId);
+}).catch((error) => console.error(error));
+
+
+formEditUserProfile.addEventListener('submit', handleUserProfileFormSubmit);
+formCreateCard.addEventListener('submit', handleCreateCardPlaceFormSubmit);
+formEditAvatar.addEventListener('submit', handleEditAvatarFormSubmit);
+
+profileEditPopapOpenButton.addEventListener('click', () => {
+  handleOpenModal(popapProfileEdit);
+  fillUserProfileFormFields();
+  clearValidation(formEditUserProfile, validationConfig);
+});
+
+editAvatarPopapOpenButton.addEventListener('click', () => {
+  formEditAvatar.reset();
+  handleOpenModal(popapAvatarEdit);
+  clearValidation(formEditAvatar, validationConfig);
+})
+
+createCardPopapOpenButton.addEventListener('click', () => {
+  formCreateCard.reset();
+  handleOpenModal(popapCardCreate);
+  clearValidation(formCreateCard, validationConfig);
+});
+
+popaps.forEach(popap => {
+  popap.classList.add('popup_is-animated');
+
+  popap.addEventListener('click', (event) => {
+    const isCloseButton = event.target.classList.contains('popup__close');
+    if (isCloseButton ) {
+      handleCloseModal(popap);
+    }
+  })
+
+  popap.addEventListener('click', handleCloseModalByOverlay);
+})
+
+function renderPlaceCards(cardsData, userId) {
+  cardsData.forEach(cardData => {
+    const card = createPlaceCard(cardData, userId, handleDeletePlaceCard, handleToggleFavoriteCard, handleFillDataImagePopap);
+    placesList.append(card)
+  });
+};
+
+enableValidation(validationConfig);
+
